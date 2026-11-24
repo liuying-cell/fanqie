@@ -3,6 +3,7 @@ name = "pomodoro-app"
 version = "0.1.0"
 description = "一轮番茄钟"
 authors = ["Future"]
+license = "MIT"
 edition = "2021"
 
 [lib]
