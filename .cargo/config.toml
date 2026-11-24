@@ -1,0 +1,6 @@
+# 使用 Rust 自带的 lld 链接器（lld-link flavor），兼容 msvc 目标。
+# 原因：本机 MSVC link.exe 在 cargo 长命令行下创建 lnk{GUID}.tmp 响应文件失败（LNK1104），
+# 而 lld-link 不依赖该机制，且能直接消费 MSVC 的 .lib。
+[target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
+rustflags = ["-C", "linker-flavor=lld-link"]

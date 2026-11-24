@@ -1,0 +1,15 @@
+node_modules/
+dist/
+src-tauri/target/
+*.log
+.cargo_tmp/
+__pycache__/
+*.pyc
+artifacts/
+preview/
+release/*.exe
+.env
+.env.*
+Thumbs.db
+.DS_Store
+*.tmp

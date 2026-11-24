@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="50" y1="30" x2="970" y2="990" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF7"/>
+      <stop offset="1" stop-color="#EEE9DD"/>
+    </linearGradient>
+    <linearGradient id="tomato" x1="320" y1="250" x2="730" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DD6B52"/>
+      <stop offset="1" stop-color="#B5392B"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="24" stdDeviation="27" flood-color="#633f2f" flood-opacity=".24"/>
+    </filter>
+  </defs>
+
+  <rect x="42" y="42" width="940" height="940" rx="230" fill="url(#tile)" filter="url(#shadow)"/>
+  <rect x="62" y="62" width="900" height="900" rx="212" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="8"/>
+
+  <path d="M414 252c25-66 70-105 124-119 17 40 7 91-30 132 72-25 126-15 169 22-53 50-116 61-184 35-21 49-51 81-91 100-35-53-31-110 12-170Z" fill="#6E9478"/>
+  <circle cx="512" cy="554" r="306" fill="url(#tomato)"/>
+  <circle cx="512" cy="554" r="245" fill="none" stroke="#6b1812" stroke-opacity=".17" stroke-width="67"/>
+  <circle cx="512" cy="554" r="245" fill="none" stroke="#FFF6E8" stroke-linecap="round" stroke-width="67" stroke-dasharray="1280 260" transform="rotate(-90 512 554)"/>
+
+  <rect x="380" y="510" width="264" height="82" rx="41" fill="#FFF6E8"/>
+  <circle cx="512" cy="256" r="34" fill="#F4B18F" fill-opacity=".34"/>
+</svg>
