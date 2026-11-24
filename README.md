@@ -1,84 +1,119 @@
 # 一轮番茄钟
 
-Windows 桌面版番茄钟。正式运行入口：
+一个安静、轻量、完全本地运行的 Windows 桌面番茄钟。使用 Tauri 2、TypeScript 和原生 CSS 构建。
 
-`C:\Users\<user>\AppData\Local\PomodoroApp\pomodoro-app.exe`
+<p align="center">
+  <img src="docs/screenshots/main-focus.png" alt="专注计时界面" width="330">
+  <img src="docs/screenshots/settings.png" alt="设置界面" width="330">
+</p>
 
-开始菜单快捷方式名称为“一轮番茄钟”。
+## 下载安装
 
-## 重新安装
+前往 [GitHub Releases](../../releases/latest) 下载最新的 Windows 安装程序：
 
-项目目录已保留最终可执行文件和安装包：
+- 安装版：`PomodoroApp_0.1.0_x64-setup.exe`
+- 便携版：`pomodoro-app.exe`
 
-- `release\pomodoro-app.exe`
-- `release\PomodoroApp_0.1.0_x64-setup.exe`
+GitHub 自动生成的 **Source code (zip)** 仅供开发者查看源码，普通用户不需要下载。
 
-无管理员权限部署：
+## 功能
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1
+- 专注、短休息、长休息完整循环
+- 自定义专注时长、休息时长和长休息间隔
+- 经典、深度和自定义计时预设
+- 当前阶段重置、跳过当前阶段、重置整轮回到第 1 轮
+- 浅色与深色主题，阶段自动切换配色
+- 系统托盘、悬浮球、阶段完成通知和提示音
+- 自动开始下一阶段、开机启动、始终置顶
+- 今日专注轮数与专注分钟统计
+- 设置和计时状态自动持久化
+- 完全离线运行，不收集用户数据
+
+## 系统要求
+
+- Windows 10 或 Windows 11，64 位
+- Microsoft Edge WebView2 Runtime
+
+Windows 11 通常已内置 WebView2。Windows 10 如果无法启动，请先安装微软官方 WebView2 Runtime。
+
+## 安装说明
+
+1. 从 Releases 下载 `PomodoroApp_0.1.0_x64-setup.exe`。
+2. 运行安装程序。
+3. 如果 Windows SmartScreen 提示“未知发布者”，选择“更多信息”→“仍要运行”。
+
+当前安装包尚未进行商业代码签名，因此可能出现 SmartScreen 提示。这是 Windows 对未签名程序的常规警告。
+
+## 升级与卸载
+
+覆盖安装前请先从托盘退出正在运行的番茄钟。
+
+- 普通卸载：通过 Windows“设置”→“应用”卸载，用户数据和设置默认保留。
+- 开发或便携部署可使用项目中的 `install.ps1` 与 `uninstall.ps1`。
+- 只有显式运行 `uninstall.ps1 -RemoveData` 才会删除本地用户数据。
+
+## 数据与隐私
+
+主数据目录：
+
+```text
+%APPDATA%\com.future.pomodoro
 ```
 
-脚本会部署到 `%LOCALAPPDATA%\PomodoroApp`，并创建带正确 AUMID 的开始菜单快捷方式。
+如果该目录不可写，应用会回退到：
 
-覆盖升级使用同一个命令：先把新 exe 复制到临时副本并校验 SHA256，再把当前
-`pomodoro-app.exe` 留作 `pomodoro-app.previous.exe` 后替换；用户数据不会被动到。
-若目标程序正在运行，脚本会明确报错退出，不强制结束进程——请先手动关闭应用。
-
-## 数据位置
-
-- 主数据目录：`%APPDATA%\com.future.pomodoro`（不可写时回退 `%LOCALAPPDATA%\PomodoroAppData`，不会使用 exe 同级 `data` 或临时目录）
-- 配置文件：`settings.json`、`timer.json`、`ball-position.json`、`theme.json`
-- 原子写入产生同名 `.tmp`（事务中）与 `.bak`（上一次的值）；主文件损坏时自动从 `.bak` 读取
-- 诊断日志：`%APPDATA%\com.future.pomodoro\logs\pomodoro.log`，超过 1 MB 轮转为 `pomodoro.log.1`，最多两份
-- 设置页「数据与诊断 → 打开数据目录」可在资源管理器中打开当前数据目录
-
-## 卸载
-
-默认卸载只删除程序目录与快捷方式，**保留全部用户数据**：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
+```text
+%LOCALAPPDATA%\PomodoroAppData
 ```
 
-若旧安装曾在程序目录留下 `data\`，卸载时会先迁移到
-`%APPDATA%\com.future.pomodoro\legacy-install-data`，再删除程序目录。
+目录中包含设置、计时状态、悬浮球位置、主题和本地诊断日志。应用不会上传这些数据。
 
-需要彻底删除用户数据时显式加参数：
+应用内可从“设置”→“数据与诊断”→“打开数据目录”直接打开当前目录。
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1 -RemoveData
-```
+## 本地开发
 
-该参数会删除 `%APPDATA%\com.future.pomodoro` 与 `%LOCALAPPDATA%\PomodoroAppData`，不可撤销。
+需要准备：
 
-## 开发
+- Node.js 20+
+- Rust stable
+- Visual Studio C++ Build Tools
+- Microsoft Edge WebView2 Runtime
 
-源码保留在 `src\` 和 `src-tauri\src\`。从全新环境构建前，需要准备 Rustup、Visual Studio C++ Build Tools 和 WebView2：
+安装依赖并启动开发模式：
 
 ```powershell
 npm ci
-npm run build
-npm run tauri build
+npm run tauri dev
 ```
 
-生产构建必须使用 `npm run tauri build`，不要用单独的 `cargo build --release` 代替正式部署产物。
-
-## 质量检查
-
-一次执行前端构建、Rust 格式、单元测试与 Clippy：
+运行完整检查：
 
 ```powershell
 npm run check
 ```
 
-也可单独执行：
+构建 Windows 安装包：
 
 ```powershell
-npm run build
-cargo fmt --manifest-path .\src-tauri\Cargo.toml --all -- --check
-cargo test --manifest-path .\src-tauri\Cargo.toml
-cargo clippy --manifest-path .\src-tauri\Cargo.toml --all-targets -- -D warnings
+npm run tauri build
 ```
 
-Windows 下若当前终端找不到 MSVC，请先进入 `x64 Native Tools Command Prompt for VS` 再执行 Rust 命令。
+构建产物位于：
+
+```text
+src-tauri\target\release\bundle\nsis\
+```
+
+## 项目结构
+
+```text
+src/                前端界面与悬浮球
+src-tauri/          Rust 后端、计时状态机和持久化
+docs/screenshots/   README 正式截图
+install.ps1         本地便携部署脚本
+uninstall.ps1       本地便携卸载脚本
+```
+
+## 许可证
+
+本项目使用 [MIT License](LICENSE)。
