@@ -34,7 +34,7 @@ $SourceExe   = Join-Path $PSScriptRoot 'release\一轮番茄钟.exe'
 # ---- 解析路径：优先用脚本自身定位源 exe，兼容从任意 cwd 调用 ----
 if (-not (Test-Path -LiteralPath $SourceExe)) {
     # 清理构建缓存后，正式交付使用 release 目录；开发构建时可回退到 target。
-    $SourceExe = Join-Path $PSScriptRoot 'src-tauri\target\release\pomodoro-app.exe'
+    $SourceExe = Join-Path $PSScriptRoot 'src-tauri\target\release\一轮番茄钟.exe'
 }
 if (-not (Test-Path -LiteralPath $SourceExe)) {
     throw "找不到 release exe：$SourceExe 。请先运行 npm run tauri build。"
