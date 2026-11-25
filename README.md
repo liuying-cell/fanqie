@@ -6,9 +6,9 @@
 
 前往 [GitHub Releases](../../releases/latest) 下载最新的 Windows 安装程序。首个完成 [SignPath Foundation](https://signpath.org/) 签名的正式版本开始，安装包和便携版均带 Authenticode 数字签名。
 
-- 安装版：`PomodoroApp_<版本>_x64-setup.exe`
-- 便携版：`pomodoro-app.exe`
-- 便携压缩包：`PomodoroApp_<版本>_windows-x64-portable.zip`
+- 安装版：`一轮番茄钟_<版本>_x64-setup.exe`
+- 便携版：`一轮番茄钟.exe`
+- 便携压缩包：`一轮番茄钟_<版本>_windows-x64-portable.zip`
 - 校验文件：`SHA256SUMS.txt`
 
 `v0.1.0` 及更早版本未签名。普通用户应优先下载已签名的新版本。GitHub 自动生成的 **Source code (zip)** 仅供开发者查看源码。

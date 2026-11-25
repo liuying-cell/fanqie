@@ -14,10 +14,16 @@
 6. 创建签名策略，建议 slug 使用 `release-signing`。
 7. 上传本仓库的 `.signpath/artifact-configuration.xml`，建议 slug 使用 `windows-release`。
 
-Artifact Configuration 接收一个 ZIP，并同时签名其中的两个 PE 文件：
+签名工作流会在临时目录中把发布文件转换为两个稳定的 ASCII 文件名后提交 SignPath：
 
-- `PomodoroApp_<版本>_x64-setup.exe`
+- `PomodoroApp_release_x64-setup.exe`
 - `pomodoro-app.exe`
+
+签名完成并验证后，再发布为用户可见的中文文件名：
+
+- `一轮番茄钟_<版本>_x64-setup.exe`
+- `一轮番茄钟.exe`
+- `一轮番茄钟_<版本>_windows-x64-portable.zip`
 
 SignPath Foundation 的开源签名要求参与签名请求的 GitHub Actions 任务全部运行在 GitHub 托管运行器上。本仓库的发布工作流固定使用 `windows-latest`。
 
@@ -64,16 +70,16 @@ Repository variables：
 2. 选择 **Run workflow**。
 3. 保持 `publish` 为 `false`。
 4. 工作流完成构建、提交 SignPath、下载签名产物并验证证书。
-5. 从本次运行下载名称以 `PomodoroApp-<版本>-signed-` 开头的工作流产物。
+5. 从本次运行下载名称以 `一轮番茄钟-<版本>-signed-` 开头的工作流产物。
 6. 检查两个 EXE 的签名状态均为 `Valid`，并且存在时间戳。
 
 本地复核命令：
 
 ```powershell
-Get-AuthenticodeSignature .\PomodoroApp_0.1.1_x64-setup.exe |
+Get-AuthenticodeSignature .\一轮番茄钟_0.1.1_x64-setup.exe |
   Format-List Status, StatusMessage, SignerCertificate, TimeStamperCertificate
 
-Get-AuthenticodeSignature .\pomodoro-app.exe |
+Get-AuthenticodeSignature .\一轮番茄钟.exe |
   Format-List Status, StatusMessage, SignerCertificate, TimeStamperCertificate
 ```
 

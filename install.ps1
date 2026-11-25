@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
   「一轮番茄钟」便携部署脚本（T001 · ASCII 部署基线）。
@@ -29,7 +29,7 @@ $DeployName  = 'PomodoroApp'                   # 纯 ASCII 目录名
 $ExeName     = 'pomodoro-app.exe'
 $LinkName    = '一轮番茄钟'                     # 中文显示名
 $RepoRoot    = Split-Path -Parent $PSScriptRoot # pomodoro-app 的上级（合作目录）
-$SourceExe   = Join-Path $PSScriptRoot 'release\pomodoro-app.exe'
+$SourceExe   = Join-Path $PSScriptRoot 'release\一轮番茄钟.exe'
 
 # ---- 解析路径：优先用脚本自身定位源 exe，兼容从任意 cwd 调用 ----
 if (-not (Test-Path -LiteralPath $SourceExe)) {

@@ -91,14 +91,14 @@ jobs:
           $portable = Get-Item -LiteralPath 'src-tauri/target/release/pomodoro-app.exe'
           $installers = @(
             Get-ChildItem -LiteralPath 'src-tauri/target/release/bundle/nsis' -File |
-              Where-Object { $_.Name -like 'PomodoroApp_*_x64-setup.exe' }
+              Where-Object { $_.Name -like '一轮番茄钟_*_x64-setup.exe' }
           )
           if ($installers.Count -ne 1) {
             throw "Expected exactly one NSIS installer, found $($installers.Count)."
           }
 
-          Copy-Item -LiteralPath $portable.FullName -Destination $inputDir
-          Copy-Item -LiteralPath $installers[0].FullName -Destination $inputDir
+          Copy-Item -LiteralPath $portable.FullName -Destination (Join-Path $inputDir 'pomodoro-app.exe')
+          Copy-Item -LiteralPath $installers[0].FullName -Destination (Join-Path $inputDir 'PomodoroApp_release_x64-setup.exe')
           Get-ChildItem -LiteralPath $inputDir -File | Select-Object Name, Length
 
       - name: Upload unsigned files for SignPath
@@ -207,11 +207,21 @@ jobs:
           $releaseDir = Join-Path $env:RUNNER_TEMP 'release-assets'
           New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
 
-          Get-ChildItem -LiteralPath $signedDir -Recurse -File -Filter '*.exe' |
-            Copy-Item -Destination $releaseDir -Force
+          $signedPortable = Get-Item -LiteralPath (Join-Path $signedDir 'pomodoro-app.exe')
+          $signedInstaller = Get-ChildItem -LiteralPath $signedDir -File |
+            Where-Object { $_.Name -like 'PomodoroApp_*_x64-setup.exe' } |
+            Select-Object -First 1
+          if (-not $signedInstaller) {
+            throw 'Signed NSIS installer was not found.'
+          }
 
-          $portable = Get-Item -LiteralPath (Join-Path $releaseDir 'pomodoro-app.exe')
-          $portableZip = Join-Path $releaseDir "PomodoroApp_$env:APP_VERSION`_windows-x64-portable.zip"
+          $releasePortable = Join-Path $releaseDir '一轮番茄钟.exe'
+          $releaseInstaller = Join-Path $releaseDir "一轮番茄钟_$env:APP_VERSION`_x64-setup.exe"
+          Copy-Item -LiteralPath $signedPortable.FullName -Destination $releasePortable
+          Copy-Item -LiteralPath $signedInstaller.FullName -Destination $releaseInstaller
+
+          $portable = Get-Item -LiteralPath $releasePortable
+          $portableZip = Join-Path $releaseDir "一轮番茄钟_$env:APP_VERSION`_windows-x64-portable.zip"
           Compress-Archive -LiteralPath $portable.FullName -DestinationPath $portableZip -Force
 
           $checksumPath = Join-Path $releaseDir 'SHA256SUMS.txt'
@@ -234,7 +244,7 @@ jobs:
       - name: Upload signed workflow artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: PomodoroApp-${{ env.APP_VERSION }}-signed-${{ github.run_id }}-${{ github.run_attempt }}
+          name: 一轮番茄钟-${{ env.APP_VERSION }}-signed-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/release-assets/*
           if-no-files-found: error
           retention-days: 14
