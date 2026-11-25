@@ -1,0 +1,253 @@
+name: Sign and release Windows build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Create a GitHub Release after signing succeeds"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build unsigned Windows artifacts
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+    outputs:
+      artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+      app-version: ${{ steps.version.outputs.app-version }}
+      release-tag: ${{ steps.version.outputs.release-tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve and validate version
+        id: version
+        shell: pwsh
+        run: |
+          $tauri = Get-Content -LiteralPath 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json
+          $package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
+          if ($tauri.version -ne $package.version) {
+            throw "Version mismatch: tauri.conf.json=$($tauri.version), package.json=$($package.version)"
+          }
+
+          $version = $tauri.version
+          $tag = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME } else { "v$version" }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $tag -ne "v$version") {
+            throw "Tag $tag does not match project version v$version"
+          }
+
+          "app-version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "release-tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Building $tag"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run checks
+        run: npm run check
+
+      - name: Build Windows artifacts
+        run: npm run tauri -- build --bundles nsis --ci
+
+      - name: Prepare unsigned files for SignPath
+        shell: pwsh
+        run: |
+          $inputDir = Join-Path $env:RUNNER_TEMP 'signpath-input'
+          New-Item -ItemType Directory -Path $inputDir -Force | Out-Null
+
+          $portable = Get-Item -LiteralPath 'src-tauri/target/release/pomodoro-app.exe'
+          $installers = @(
+            Get-ChildItem -LiteralPath 'src-tauri/target/release/bundle/nsis' -File |
+              Where-Object { $_.Name -like 'PomodoroApp_*_x64-setup.exe' }
+          )
+          if ($installers.Count -ne 1) {
+            throw "Expected exactly one NSIS installer, found $($installers.Count)."
+          }
+
+          Copy-Item -LiteralPath $portable.FullName -Destination $inputDir
+          Copy-Item -LiteralPath $installers[0].FullName -Destination $inputDir
+          Get-ChildItem -LiteralPath $inputDir -File | Select-Object Name, Length
+
+      - name: Upload unsigned files for SignPath
+        id: upload-unsigned
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-release-unsigned-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/signpath-input/pomodoro-app.exe
+            ${{ runner.temp }}/signpath-input/PomodoroApp_*_x64-setup.exe
+          if-no-files-found: error
+          retention-days: 1
+
+  sign-release:
+    name: Sign, verify and publish
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      attestations: write
+      contents: write
+      id-token: write
+    env:
+      APP_VERSION: ${{ needs.build.outputs.app-version }}
+      RELEASE_TAG: ${{ needs.build.outputs.release-tag }}
+      SIGNPATH_ORGANIZATION_ID: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+      SIGNPATH_PROJECT_SLUG: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+      SIGNPATH_SIGNING_POLICY_SLUG: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+      SIGNPATH_ARTIFACT_CONFIGURATION_SLUG: ${{ vars.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+
+    steps:
+      - name: Validate SignPath configuration
+        shell: pwsh
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          $required = @(
+            'SIGNPATH_API_TOKEN',
+            'SIGNPATH_ORGANIZATION_ID',
+            'SIGNPATH_PROJECT_SLUG',
+            'SIGNPATH_SIGNING_POLICY_SLUG',
+            'SIGNPATH_ARTIFACT_CONFIGURATION_SLUG'
+          )
+          $missing = $required | Where-Object {
+            [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_))
+          }
+          if ($missing) {
+            throw "Missing SignPath configuration: $($missing -join ', '). See docs/code-signing.md."
+          }
+
+      - name: Sign with SignPath Foundation
+        id: signpath
+        uses: signpath/github-action-submit-signing-request@a2c5b60d9c75f073142b653c354b632eedce097b # v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ env.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ env.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: ${{ env.SIGNPATH_ARTIFACT_CONFIGURATION_SLUG }}
+          github-artifact-id: ${{ needs.build.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 1200
+          output-artifact-directory: ${{ runner.temp }}/signed
+
+      - name: Verify Authenticode signatures and timestamps
+        shell: pwsh
+        env:
+          SIGNING_REQUEST_URL: ${{ steps.signpath.outputs.signing-request-web-url }}
+        run: |
+          $signedDir = Join-Path $env:RUNNER_TEMP 'signed'
+          $signedFiles = @(Get-ChildItem -LiteralPath $signedDir -Recurse -File -Filter '*.exe')
+          if ($signedFiles.Count -ne 2) {
+            throw "Expected 2 signed EXE files, found $($signedFiles.Count) in $signedDir"
+          }
+
+          foreach ($file in $signedFiles) {
+            $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            if ("$($signature.Status)" -ne 'Valid') {
+              throw "Invalid signature: $($file.Name) status=$($signature.Status) message=$($signature.StatusMessage)"
+            }
+            if ($null -eq $signature.SignerCertificate) {
+              throw "No signer certificate: $($file.Name)"
+            }
+            if ($null -eq $signature.TimeStamperCertificate) {
+              throw "No timestamp certificate: $($file.Name)"
+            }
+            Write-Host "VALID $($file.Name)"
+            Write-Host "  Signer: $($signature.SignerCertificate.Subject)"
+            Write-Host "  Timestamp: $($signature.TimeStamperCertificate.Subject)"
+          }
+
+          $signer = (Get-AuthenticodeSignature -LiteralPath $signedFiles[0].FullName).SignerCertificate.Subject
+          @"
+          ### SignPath signing succeeded
+
+          - Signing request: $env:SIGNING_REQUEST_URL
+          - Signer: $signer
+          - Verification: all EXE files are valid and timestamped
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Assemble release assets
+        shell: pwsh
+        run: |
+          $signedDir = Join-Path $env:RUNNER_TEMP 'signed'
+          $releaseDir = Join-Path $env:RUNNER_TEMP 'release-assets'
+          New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+
+          Get-ChildItem -LiteralPath $signedDir -Recurse -File -Filter '*.exe' |
+            Copy-Item -Destination $releaseDir -Force
+
+          $portable = Get-Item -LiteralPath (Join-Path $releaseDir 'pomodoro-app.exe')
+          $portableZip = Join-Path $releaseDir "PomodoroApp_$env:APP_VERSION`_windows-x64-portable.zip"
+          Compress-Archive -LiteralPath $portable.FullName -DestinationPath $portableZip -Force
+
+          $checksumPath = Join-Path $releaseDir 'SHA256SUMS.txt'
+          Get-ChildItem -LiteralPath $releaseDir -File |
+            Where-Object Name -ne 'SHA256SUMS.txt' |
+            Sort-Object Name |
+            ForEach-Object { "$(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256 | Select-Object -ExpandProperty Hash)  $($_.Name)" } |
+            Set-Content -LiteralPath $checksumPath -Encoding ascii
+
+          Get-Content -LiteralPath $checksumPath
+          Get-ChildItem -LiteralPath $releaseDir -File | Select-Object Name, Length
+
+      - name: Attest signed artifacts
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            ${{ runner.temp }}/release-assets/*.exe
+            ${{ runner.temp }}/release-assets/*.zip
+
+      - name: Upload signed workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: PomodoroApp-${{ env.APP_VERSION }}-signed-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: ${{ github.event_name == 'push' || inputs.publish }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = @(Get-ChildItem -LiteralPath (Join-Path $env:RUNNER_TEMP 'release-assets') -File | ForEach-Object FullName)
+          if ($env:GITHUB_EVENT_NAME -eq 'push') {
+            gh release create $env:RELEASE_TAG $assets --repo $env:GITHUB_REPOSITORY --verify-tag --generate-notes --title "一轮番茄钟 $env:RELEASE_TAG"
+          } else {
+            gh release create $env:RELEASE_TAG $assets --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --generate-notes --title "一轮番茄钟 $env:RELEASE_TAG"
+          }

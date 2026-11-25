@@ -4,12 +4,14 @@
 
 ## 下载安装
 
-前往 [GitHub Releases](../../releases/latest) 下载最新的 Windows 安装程序：
+前往 [GitHub Releases](../../releases/latest) 下载最新的 Windows 安装程序。首个完成 [SignPath Foundation](https://signpath.org/) 签名的正式版本开始，安装包和便携版均带 Authenticode 数字签名。
 
-- 安装版：`PomodoroApp_0.1.0_x64-setup.exe`
+- 安装版：`PomodoroApp_<版本>_x64-setup.exe`
 - 便携版：`pomodoro-app.exe`
+- 便携压缩包：`PomodoroApp_<版本>_windows-x64-portable.zip`
+- 校验文件：`SHA256SUMS.txt`
 
-GitHub 自动生成的 **Source code (zip)** 仅供开发者查看源码，普通用户不需要下载。
+`v0.1.0` 及更早版本未签名。普通用户应优先下载已签名的新版本。GitHub 自动生成的 **Source code (zip)** 仅供开发者查看源码。
 
 ## 功能
 
@@ -37,13 +39,16 @@ GitHub 自动生成的 **Source code (zip)** 仅供开发者查看源码，普�
 
 Windows 11 通常已内置 WebView2。Windows 10 如果无法启动，请先安装微软官方 WebView2 Runtime。
 
-## 安装说明
+## 安装与签名验证
 
-1. 从 Releases 下载 `PomodoroApp_0.1.0_x64-setup.exe`。
-2. 运行安装程序。
-3. 如果 Windows SmartScreen 提示“未知发布者”，选择“更多信息”→“仍要运行”。
+1. 从最新 Release 下载安装版；如不希望安装，可下载便携压缩包。
+2. 下载 `SHA256SUMS.txt`，确认文件哈希与 GitHub Release 中的文件一致。
+3. 右键 EXE →“属性”→“数字签名”，确认签名状态正常。正式签名版本由 SignPath Foundation 提供。
+4. 运行安装程序或解压后的便携版。
 
-当前安装包尚未进行商业代码签名，因此可能出现 SmartScreen 提示。这是 Windows 对未签名程序的常规警告。
+签名版本能证明文件来自本项目的 GitHub 构建流程，且在发布后没有被篡改。全新版本仍可能因下载量不足出现“不常下载”之类的信誉提示；应先核对 SHA256 和数字签名，不要关闭 Windows 安全功能来强行运行来源不明的文件。
+
+签名申请、GitHub Actions 配置和发布步骤见 [代码签名与发布](docs/code-signing.md)。
 
 ## 升级与卸载
 
@@ -108,12 +113,17 @@ src-tauri\target\release\bundle\nsis\
 ## 项目结构
 
 ```text
+.github/workflows/  持续检查与签名发布工作流
+.signpath/          SignPath 签名产物配置
 src/                前端界面与悬浮球
 src-tauri/          Rust 后端、计时状态机和持久化
 docs/screenshots/   README 正式截图
+docs/code-signing.md 代码签名申请与发布说明
 install.ps1         本地便携部署脚本
 uninstall.ps1       本地便携卸载脚本
 ```
+
+本地直接执行 `npm run tauri build` 只会生成未签名产物；面向用户的正式安装包应通过 GitHub Actions 的签名发布工作流生成。
 
 ## 许可证
 
