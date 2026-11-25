@@ -1,11 +1,6 @@
 # 一轮番茄钟
 
-一个安静、轻量、完全本地运行的 Windows 桌面番茄钟。使用 Tauri 2、TypeScript 和原生 CSS 构建。
-
-<p align="center">
-  <img src="docs/screenshots/main-focus.png" alt="专注计时界面" width="330">
-  <img src="docs/screenshots/settings.png" alt="设置界面" width="330">
-</p>
+一轮番茄钟是一款完全离线运行的 Windows 桌面番茄钟。你可以自定义专注和休息时长，用悬浮球查看计时进度，并在需要时重置整轮，回到第 1 轮。
 
 ## 下载安装
 
@@ -28,6 +23,12 @@ GitHub 自动生成的 **Source code (zip)** 仅供开发者查看源码，普�
 - 今日专注轮数与专注分钟统计
 - 设置和计时状态自动持久化
 - 完全离线运行，不收集用户数据
+
+## 界面展示
+
+| 专注计时 | 短休息与悬浮球 | 计时设置 |
+| :---: | :---: | :---: |
+| <a href="./docs/screenshots/main-focus.png"><img src="./docs/screenshots/main-focus.png" alt="专注计时界面" width="220"></a> | <a href="./docs/screenshots/short-break.png"><img src="./docs/screenshots/short-break.png" alt="短休息与悬浮球界面" width="220"></a> | <a href="./docs/screenshots/settings.png"><img src="./docs/screenshots/settings.png" alt="计时设置界面" width="220"></a> |
 
 ## 系统要求
 
